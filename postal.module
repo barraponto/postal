@@ -1,0 +1,129 @@
+<?php
+
+/* 
+ *
+ */
+function postal_address(&$address, $id=null, $values=array()) {
+  $fields = array('name', 'first_name', 'last_name', 'street1', 'street2', 
+    'zip', 'city', 'state', 'country');
+
+  if (!$address) {
+    $address = new stdClass();
+    $address->id = $id ? $id : 'default';
+  }
+  else {
+    $address = (object) $address;
+  }
+  
+  $address->empty = true;
+  
+  foreach ($fields as $field) {
+    if(!array_key_exists($field, $address)) {
+      $address->$field = '';
+    }
+    elseif($address->$field) $address->empty = false;
+  }
+
+  foreach($values as $key => $val) {
+    if (($field = str_replace('postal_'.$id.'_', '', $key)) != $key) {
+      if (in_array($field, $fields)) {
+        $address->$field = $val;
+      }
+    }
+  }
+
+  return $address;
+}
+
+function postal_form(&$address, $fields=array(), $values=array()) {
+  $id = check_plain($address->id);
+
+  // initialize the address 
+  postal_address($address, $address->id, $values);
+
+  $form = array();
+  $form['postal_'.$id.'_address'] = array(
+    '#type' => 'value',
+    '#value' => $address,
+  );
+  $form['postal_'.$id.'_first_name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('First Name'),
+    '#default_value' => $address->first_name,
+    '#size' => 50,
+    '#maxlength' => 75,
+    '#required' => $address->required,
+  );
+  $form['postal_'.$id.'_last_name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Last Name'),
+    '#default_value' => $address->last_name,
+    '#size' => 50,
+    '#maxlength' => 75,
+    '#required' => $address->required,
+  );
+  $form['postal_'.$id.'_street1'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Street Address'),
+    '#default_value' => $address->street1,
+    '#size' => 50,
+    '#maxlength' => 75,
+    '#required' =>  $address->required,
+  );
+  $form['postal_'.$id.'_street2'] = array(
+    '#type' => 'textfield',
+    '#title' => '',
+    '#default_value' => $address->street2,
+    '#size' => 50,
+    '#maxlength' => 75,
+    '#required' => false,
+  );
+  $form['postal_'.$id.'_city'] = array(
+    '#type' => 'textfield',
+    '#title' => t('City'),
+    '#default_value' => $address->city,
+    '#size' => 30,
+    '#maxlength' => 64,
+    '#required' => $address->required,
+  );
+  $form['postal_'.$id.'_state'] = array(
+    '#type' => 'textfield',
+    '#title' => t('State / Province'),
+    '#default_value' => $address->state,
+    '#size' => 30,
+    '#maxlength' => 64,
+  );
+  $form['postal_'.$id.'_zip'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Zip / Postal Code'),
+    '#default_value' => $address->zip,
+    '#size' => 20,
+    '#maxlength' => 20,
+    '#required' => $address->required,
+  );
+
+  // only show requested fields
+  if ($fields) {
+    foreach($form as $field => $val) {
+      if(!in_array('postal_'.$id.'_'.$field, $fields)) unset($form[$field]);
+    }
+  }
+  return $form;
+}
+
+function theme_postal_address($address) {
+  $out = '';
+  if($address->name)        $out .= $address->name;
+  if($address->first_name)  $out .= $address->first_name.' ';
+  if($address->last_name)   $out .= ' '.$address->last_name;
+  if($address->street1)     $out .= '<br />'.$address->street1;
+  if($address->street1)     $out .= '<br />'.$address->street2;
+  if($address->city || $address->state || $address->zip) $out .= '<br />';
+  if($address->city)        $out .= $address->city . ', ';
+  if($address->state)       $out .= $address->state . ' ';
+  if($address->zip)         $out .= $address->zip;
+  if($address->country)     $out .= '<br />'.$address->country;
+  
+  return $out;
+}    
+
