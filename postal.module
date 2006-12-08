@@ -117,7 +117,7 @@ function theme_postal_address($address) {
   if($address->first_name)  $out .= $address->first_name.' ';
   if($address->last_name)   $out .= ' '.$address->last_name;
   if($address->street1)     $out .= '<br />'.$address->street1;
-  if($address->street1)     $out .= '<br />'.$address->street2;
+  if($address->street2)     $out .= '<br />'.$address->street2;
   if($address->city || $address->state || $address->zip) $out .= '<br />';
   if($address->city)        $out .= $address->city . ', ';
   if($address->state)       $out .= $address->state . ' ';
