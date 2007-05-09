@@ -1,11 +1,75 @@
 <?php
+/*
+  TODO/wishlist:
+   - doesn't appear to be saving entries appropriately
+   - Get ISO-3166-1 (and -2??) data for countries (and states??)
+   - implement a nicer theme for form, including dropdowns and stuff
+   - widget settings to show/hide various fields (names, country, etc.) 
+   - Add field_settings:tables/arguments/filters for field components (zip, street, etc)
+*/
+
+function postal_field_info() {
+  return array(
+    'postal' => array('label' => t('Postal Address')),
+  );
+}
+
+function postal_field($op, &$node, $field, &$node_field, $teaser, $page) {
+  switch ($op) {
+    case 'validate':
+  }
+}
+
+function postal_field_settings($op, $field) {
+  switch ($op) {
+    case 'database columns':
+      return postal_field_list();
+  }
+}
+
+function postal_widget_info() {
+  return array(
+    'postal' => array(
+      'label' => t('Address form'),
+      'field types' => array('postal'),
+    ),
+  );
+}
+
+function postal_widget($op, &$node, $field, &$node_field) {
+  switch ($op) {
+    case 'form':
+      $name = $field['field_name'];
+      $form = postal_form($name, $fields=array(), $node_field);
+      $form['#type'] = 'fieldset';
+      $form['#tree'] = true;
+      $form['#title'] = $field['widget']['label'];
+
+      return array( $field['field_name'] => $form );
+  }
+}
+
+function postal_field_list() {
+  $fields = array(
+    'type'       => array('type' => 'varchar', 'length' => 100, 'sortable' => true),
+    'name'       => array('type' => 'varchar', 'length' => 100, 'sortable' => true),
+    'first_name' => array('type' => 'varchar', 'length' => 100, 'sortable' => true),
+    'last_name'  => array('type' => 'varchar', 'length' => 100, 'sortable' => true),
+    'street1'    => array('type' => 'varchar', 'length' => 64, 'sortable' => false),
+    'street2'    => array('type' => 'varchar', 'length' => 64, 'sortable' => false),
+    'zip'        => array('type' => 'varchar', 'length' => 10, 'sortable' => true),
+    'city'       => array('type' => 'varchar', 'length' => 32, 'sortable' => true),
+    'state'      => array('type' => 'varchar', 'length' => 32, 'sortable' => true),
+    'country'    => array('type' => 'varchar', 'length' => 2, 'sortable' => true),
+  );
+  return $fields;
+}
 
 /* 
  *
  */
 function postal_address(&$address, $id=null, $values=array()) {
-  $fields = array('name', 'first_name', 'last_name', 'street1', 'street2', 
-    'zip', 'city', 'state', 'country');
+  $fields = array_keys(postal_field_list());
 
   if (!$address) {
     $address = new stdClass();
@@ -36,17 +100,21 @@ function postal_address(&$address, $id=null, $values=array()) {
 }
 
 function postal_form(&$address, $fields=array(), $values=array()) {
-  $id = check_plain($address->id);
+  // TODO - do we still need to be cognizant of the id?  Or just assume
+  // that the calling code to keep track of its own stuff?
+
+  $id = is_object($address) ? $address->id : $address;
+  $id = check_plain($id);
 
   // initialize the address 
   postal_address($address, $address->id, $values);
 
   $form = array();
-  $form['postal_'.$id.'_address'] = array(
+  $form['address'] = array(
     '#type' => 'value',
     '#value' => $address,
   );
-  $form['postal_'.$id.'_first_name'] = array(
+  $form['first_name'] = array(
     '#type' => 'textfield',
     '#title' => t('First Name'),
     '#default_value' => $address->first_name,
@@ -54,7 +122,7 @@ function postal_form(&$address, $fields=array(), $values=array()) {
     '#maxlength' => 75,
     '#required' => $address->required,
   );
-  $form['postal_'.$id.'_last_name'] = array(
+  $form['last_name'] = array(
     '#type' => 'textfield',
     '#title' => t('Last Name'),
     '#default_value' => $address->last_name,
@@ -62,7 +130,7 @@ function postal_form(&$address, $fields=array(), $values=array()) {
     '#maxlength' => 75,
     '#required' => $address->required,
   );
-  $form['postal_'.$id.'_street1'] = array(
+  $form['street1'] = array(
     '#type' => 'textfield',
     '#title' => t('Street Address'),
     '#default_value' => $address->street1,
@@ -70,7 +138,7 @@ function postal_form(&$address, $fields=array(), $values=array()) {
     '#maxlength' => 75,
     '#required' =>  $address->required,
   );
-  $form['postal_'.$id.'_street2'] = array(
+  $form['street2'] = array(
     '#type' => 'textfield',
     '#title' => '',
     '#default_value' => $address->street2,
@@ -78,7 +146,7 @@ function postal_form(&$address, $fields=array(), $values=array()) {
     '#maxlength' => 75,
     '#required' => false,
   );
-  $form['postal_'.$id.'_city'] = array(
+  $form['city'] = array(
     '#type' => 'textfield',
     '#title' => t('City'),
     '#default_value' => $address->city,
@@ -86,14 +154,14 @@ function postal_form(&$address, $fields=array(), $values=array()) {
     '#maxlength' => 64,
     '#required' => $address->required,
   );
-  $form['postal_'.$id.'_state'] = array(
+  $form['state'] = array(
     '#type' => 'textfield',
     '#title' => t('State / Province'),
     '#default_value' => $address->state,
     '#size' => 30,
     '#maxlength' => 64,
   );
-  $form['postal_'.$id.'_zip'] = array(
+  $form['zip'] = array(
     '#type' => 'textfield',
     '#title' => t('Zip / Postal Code'),
     '#default_value' => $address->zip,
@@ -105,7 +173,7 @@ function postal_form(&$address, $fields=array(), $values=array()) {
   // only show requested fields
   if ($fields) {
     foreach($form as $field => $val) {
-      if(!in_array('postal_'.$id.'_'.$field, $fields)) unset($form[$field]);
+      if(!in_array(''.$field, $fields)) unset($form[$field]);
     }
   }
   return $form;
@@ -126,4 +194,3 @@ function theme_postal_address($address) {
   
   return $out;
 }    
-
