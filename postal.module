@@ -36,16 +36,61 @@ function postal_widget_info() {
   );
 }
 
-function postal_widget($op, &$node, $field, &$node_field) {
+/**
+ * Implementation of hook_field_formatter_info().
+ */
+function postal_field_formatter_info() {
+  return array(
+    'default' => array(
+      'label' => 'Default',
+      'field types' => array('postal'),
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_field_formatter().
+ */
+function postal_field_formatter($field, $item, $formatter, $node) {
+
+  // scaffolding in room for more formatters later (e.g. vcard, hcard, etc)
+  switch($formatter) {
+    default: // the literal default string, actually
+      return theme('postal_address', $item);
+  }
+}
+
+function postal_widget($op, &$node, $field, &$items) {
+
   switch ($op) {
     case 'form':
+      // general set up for all postals
       $name = $field['field_name'];
-      $form = postal_form($name, $fields=array(), $node_field);
-      $form['#type'] = 'fieldset';
-      $form['#tree'] = true;
-      $form['#title'] = $field['widget']['label'];
+      $form = array();
+      $form[$name]['#type'] = 'fieldset';
+      $form[$name]['#tree'] = true;
+      $form[$name]['#title'] = $field['widget']['label'];
+      
+      if ($field['multiple']) {
+        $delta = 0;
+        foreach ($items as $data) {
+          $data['id'] = 'this is a tempory ID as i think it may be deprecated in the future :-)';
+          $o = (object) $data;
+          $form[$name][$delta] = postal_form($o);
+          $delta++;
+        }
+      } else { // the field is not multiple
+        $items[0]['id'] = 'this is a tempory ID as i think it may be deprecated in the future :-)';
+        $o = (object) $items[0];
+        $form[$name][0] = postal_form($o);
+        
+      }
 
-      return array( $field['field_name'] => $form );
+      return $form;
+      
+    case 'process form values':
+      // nothing to do right now. scaffolding this in for later
+      break;
   }
 }
 
@@ -68,6 +113,9 @@ function postal_field_list() {
 /* 
  *
  */
+ // MARK - $values is never used in this function. what is it for?
+ // Also, postal_form can handle $address as string. I don't think we can cast strings to objects
+ // Do we need to pass address by reference? We return it at the end. (The functional programmer in me prefers that)
 function postal_address(&$address, $id=null, $values=array()) {
   $fields = array_keys(postal_field_list());
 
@@ -76,7 +124,7 @@ function postal_address(&$address, $id=null, $values=array()) {
     $address->id = $id ? $id : 'default';
   }
   else {
-    $address = (object) $address;
+    $address = (object) $address; // MARK - address might be a string according to postal_form
   }
   
   $address->empty = true;
@@ -99,6 +147,10 @@ function postal_address(&$address, $id=null, $values=array()) {
   return $address;
 }
 
+// MARK - Allie, can you write up a comment on this what form an address is supposed to take
+// (e.g. a vardump of a valid address)
+// also, I don't see values used in this function (just like postal_address())
+// specifically, what is the ID? and why can it be the same as the address in some cases
 function postal_form(&$address, $fields=array(), $values=array()) {
   // TODO - do we still need to be cognizant of the id?  Or just assume
   // that the calling code to keep track of its own stuff?
@@ -107,7 +159,7 @@ function postal_form(&$address, $fields=array(), $values=array()) {
   $id = check_plain($id);
 
   // initialize the address 
-  postal_address($address, $address->id, $values);
+  postal_address($address, $id, $values);
 
   $form = array();
   $form['address'] = array(
@@ -180,6 +232,7 @@ function postal_form(&$address, $fields=array(), $values=array()) {
 }
 
 function theme_postal_address($address) {
+  $address = (object) $address;
   $out = '';
   if($address->name)        $out .= $address->name;
   if($address->first_name)  $out .= $address->first_name.' ';
