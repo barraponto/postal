@@ -70,20 +70,15 @@ function postal_widget($op, &$node, $field, &$items) {
       $form[$name]['#type'] = 'fieldset';
       $form[$name]['#tree'] = true;
       $form[$name]['#title'] = $field['widget']['label'];
+
+      if (!$items || $field['multiple']) {
+        $items[] = (array) postal_address();
+      }
       
-      if ($field['multiple']) {
-        $delta = 0;
-        foreach ($items as $data) {
-          $data['id'] = 'this is a tempory ID as i think it may be deprecated in the future :-)';
-          $o = (object) $data;
-          $form[$name][$delta] = postal_form($o);
-          $delta++;
-        }
-      } else { // the field is not multiple
-        $items[0]['id'] = 'this is a tempory ID as i think it may be deprecated in the future :-)';
-        $o = (object) $items[0];
-        $form[$name][0] = postal_form($o);
-        
+      foreach ($items as $delta => $data) {
+        $data['id'] = $name.'-'.$delta;
+        $o = (object) $data;
+        $form[$name][$delta] = postal_form($o);
       }
 
       return $form;
@@ -115,8 +110,7 @@ function postal_field_list() {
  */
  // MARK - $values is never used in this function. what is it for?
  // Also, postal_form can handle $address as string. I don't think we can cast strings to objects
- // Do we need to pass address by reference? We return it at the end. (The functional programmer in me prefers that)
-function postal_address(&$address, $id=null, $values=array()) {
+function postal_address($address=null, $id=null, $values=array()) {
   $fields = array_keys(postal_field_list());
 
   if (!$address) {
@@ -150,7 +144,6 @@ function postal_address(&$address, $id=null, $values=array()) {
 // MARK - Allie, can you write up a comment on this what form an address is supposed to take
 // (e.g. a vardump of a valid address)
 // also, I don't see values used in this function (just like postal_address())
-// specifically, what is the ID? and why can it be the same as the address in some cases
 function postal_form(&$address, $fields=array(), $values=array()) {
   // TODO - do we still need to be cognizant of the id?  Or just assume
   // that the calling code to keep track of its own stuff?
