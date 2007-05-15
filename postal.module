@@ -93,8 +93,6 @@ function postal_field_list() {
   $fields = array(
     'type'       => array('type' => 'varchar', 'length' => 100, 'sortable' => true),
     'name'       => array('type' => 'varchar', 'length' => 100, 'sortable' => true),
-    'first_name' => array('type' => 'varchar', 'length' => 100, 'sortable' => true),
-    'last_name'  => array('type' => 'varchar', 'length' => 100, 'sortable' => true),
     'street1'    => array('type' => 'varchar', 'length' => 64, 'sortable' => false),
     'street2'    => array('type' => 'varchar', 'length' => 64, 'sortable' => false),
     'zip'        => array('type' => 'varchar', 'length' => 10, 'sortable' => true),
@@ -159,22 +157,6 @@ function postal_form(&$address, $fields=array(), $values=array()) {
     '#type' => 'value',
     '#value' => $address,
   );
-  $form['first_name'] = array(
-    '#type' => 'textfield',
-    '#title' => t('First Name'),
-    '#default_value' => $address->first_name,
-    '#size' => 50,
-    '#maxlength' => 75,
-    '#required' => $address->required,
-  );
-  $form['last_name'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Last Name'),
-    '#default_value' => $address->last_name,
-    '#size' => 50,
-    '#maxlength' => 75,
-    '#required' => $address->required,
-  );
   $form['street1'] = array(
     '#type' => 'textfield',
     '#title' => t('Street Address'),
@@ -228,8 +210,6 @@ function theme_postal_address($address) {
   $address = (object) $address;
   $out = '';
   if($address->name)        $out .= $address->name;
-  if($address->first_name)  $out .= $address->first_name.' ';
-  if($address->last_name)   $out .= ' '.$address->last_name;
   if($address->street1)     $out .= '<br />'.$address->street1;
   if($address->street2)     $out .= '<br />'.$address->street2;
   if($address->city || $address->state || $address->zip) $out .= '<br />';
