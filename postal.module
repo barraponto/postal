@@ -45,6 +45,11 @@ function postal_field_formatter_info() {
       'label' => 'Default',
       'field types' => array('postal'),
     ),
+    'address_google' => array(
+      'label' => 'Address with google link',
+      'field types' => array('postal'),
+    ),
+    
   );
 }
 
@@ -55,6 +60,8 @@ function postal_field_formatter($field, $item, $formatter, $node) {
 
   // scaffolding in room for more formatters later (e.g. vcard, hcard, etc)
   switch($formatter) {
+    case 'address_google':
+      return theme('postal_address', $item, true);
     default: // the literal default string, actually
       return theme('postal_address', $item);
   }
@@ -206,8 +213,14 @@ function postal_form(&$address, $fields=array(), $values=array()) {
   return $form;
 }
 
-function theme_postal_address($address) {
+function theme_postal_address($address, $google = false) {
+  
   $address = (object) $address;
+  
+  if ($address->view) {
+    return $address->view;
+  }
+  
   $out = '';
   if($address->name)        $out .= $address->name;
   if($address->street1)     $out .= '<br />'.$address->street1;
@@ -217,6 +230,17 @@ function theme_postal_address($address) {
   if($address->state)       $out .= $address->state . ' ';
   if($address->zip)         $out .= $address->zip;
   if($address->country)     $out .= '<br />'.$address->country;
+  
+  if ($google) {
+    $acc;
+    foreach(array('street1', 'street2', 'city', 'state', 'zip', 'country') as $key) {
+      if ($address->{$key}) {
+        $acc[] = $address->{$key};
+      }
+    } 
+    $gqs = urlencode(implode(', ', $acc));
+    $out .= '<br />' . l(t('Google Map'), 'http://maps.google.com/maps', array(), "q=$gqs", NULL);
+  }
   
   return $out;
 }    
