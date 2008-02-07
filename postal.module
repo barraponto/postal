@@ -232,14 +232,16 @@ function theme_postal_address($address, $google = false) {
   if($address->country)     $out .= '<br />'.$address->country;
   
   if ($google) {
-    $acc;
+    $acc = array();
     foreach(array('street1', 'street2', 'city', 'state', 'zip', 'country') as $key) {
       if ($address->{$key}) {
         $acc[] = $address->{$key};
       }
     } 
-    $gqs = urlencode(implode(', ', $acc));
-    $out .= '<br />' . l(t('Google Map'), 'http://maps.google.com/maps', array(), "q=$gqs", NULL);
+    if ($acc) {
+      $gqs = urlencode(implode(', ', $acc));
+      $out .= '<br />' . l(t('Google Map'), 'http://maps.google.com/maps', array(), "q=$gqs", NULL);
+    }
   }
   
   return $out;
