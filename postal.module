@@ -240,7 +240,7 @@ function theme_postal_address($address, $google = false) {
     } 
     if ($acc) {
       $gqs = urlencode(implode(', ', $acc));
-      $out .= '<br />' . l(t('Google Map'), 'http://maps.google.com/maps', array(), "q=$gqs", NULL);
+      $out .= '<br />' . l(t('Google Map'), 'http://maps.google.com/maps', array('target' => '_blank'), "q=$gqs", NULL);
     }
   }
   
