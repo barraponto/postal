@@ -1,26 +1,19 @@
 <?php // $Id$
 
-function postal_database_columns() {
-  $fields = array(
-    'type'    => array('type' => 'varchar', 'length' => 100, 'sortable' => true),
-    'name'    => array('type' => 'varchar', 'length' => 100, 'sortable' => true),
-    'street1' => array('type' => 'varchar', 'length' => 64, 'sortable' => false),
-    'street2' => array('type' => 'varchar', 'length' => 64, 'sortable' => false),
-    'zip'     => array('type' => 'varchar', 'length' => 10, 'sortable' => true),
-    'city'    => array('type' => 'varchar', 'length' => 32, 'sortable' => true),
-    'state'   => array('type' => 'varchar', 'length' => 32, 'sortable' => true),
-    'country' => array('type' => 'varchar', 'length' => 2, 'sortable' => true),
+/**
+ * Implementation of hook_elements().
+ */
+function postal_elements() {
+  return array(
+    'postal' => array('#input' => TRUE, '#process' => array('postal_element' => array())),
   );
-  return $fields;
 }
 
-/*
+/**
  *
  */
- // MARK - $values is never used in this function. what is it for?
- // Also, postal_form can handle $address as string. I don't think we can cast strings to objects
 function postal_address($address=null, $id=null, $values=array()) {
-  $fields = array_keys(postal_field_list());
+  $fields = array_keys(postal_database_columns());
 
   if (!$address) {
     $address = new stdClass();
@@ -39,44 +32,27 @@ function postal_address($address=null, $id=null, $values=array()) {
     elseif ($address->$field) $address->empty = false;
   }
 
-  foreach ($values as $key => $val) {
-    if (($field = str_replace('postal_'. $id .'_', '', $key)) != $key) {
-      if (in_array($field, $fields)) {
-        $address->$field = $val;
-      }
-    }
-  }
-
   return $address;
 }
 
-// MARK - Allie, can you write up a comment on this what form an address is supposed to take
-// (e.g. a vardump of a valid address)
-// also, I don't see values used in this function (just like postal_address())
-function postal_form(&$address, $fields=array(), $values=array()) {
-  // TODO - do we still need to be cognizant of the id?  Or just assume
-  // that the calling code to keep track of its own stuff?
+function postal_element(&$element) {
+  $element['#tree'] = TRUE;
 
   $id = is_object($address) ? $address->id : $address;
   $id = check_plain($id);
 
-  // initialize the address
-  postal_address($address, $id, $values);
-
-  $form = array();
-  $form['address'] = array(
-    '#type' => 'value',
-    '#value' => $address,
-  );
-  $form['street1'] = array(
+  if (isset($element['#postal_address'])) {
+    $address = postal_address($element['#postal_address']);
+  }
+  $element['street1'] = array(
     '#type' => 'textfield',
     '#title' => t('Street Address'),
     '#default_value' => $address->street1,
     '#size' => 50,
     '#maxlength' => 75,
-    '#required' =>  $address->required,
+    '#required' => $address->required,
   );
-  $form['street2'] = array(
+  $element['street2'] = array(
     '#type' => 'textfield',
     '#title' => '',
     '#default_value' => $address->street2,
@@ -84,7 +60,7 @@ function postal_form(&$address, $fields=array(), $values=array()) {
     '#maxlength' => 75,
     '#required' => false,
   );
-  $form['city'] = array(
+  $element['city'] = array(
     '#type' => 'textfield',
     '#title' => t('City'),
     '#default_value' => $address->city,
@@ -92,14 +68,14 @@ function postal_form(&$address, $fields=array(), $values=array()) {
     '#maxlength' => 64,
     '#required' => $address->required,
   );
-  $form['state'] = array(
+  $element['state'] = array(
     '#type' => 'textfield',
     '#title' => t('State / Province'),
     '#default_value' => $address->state,
     '#size' => 30,
     '#maxlength' => 64,
   );
-  $form['zip'] = array(
+  $element['zip'] = array(
     '#type' => 'textfield',
     '#title' => t('Zip / Postal Code'),
     '#default_value' => $address->zip,
@@ -108,13 +84,30 @@ function postal_form(&$address, $fields=array(), $values=array()) {
     '#required' => $address->required,
   );
 
-  // only show requested fields
-  if ($fields) {
-    foreach ($form as $field => $val) {
-      if (!in_array(''. $field, $fields)) unset($form[$field]);
+  // Only show requested fields.
+  if (isset($element['#postal_fields'])) {
+    foreach ($element as $field => $val) {
+      if (!in_array(''. $field, $element['#postal_fields'])) unset($element[$field]);
     }
   }
-  return $form;
+  return $element;
+}
+
+function postal_database_columns() {
+  return array(
+    'type'    => array('type' => 'varchar', 'length' => 100, 'sortable' => true),
+    'name'    => array('type' => 'varchar', 'length' => 100, 'sortable' => true),
+    'street1' => array('type' => 'varchar', 'length' => 64, 'sortable' => false),
+    'street2' => array('type' => 'varchar', 'length' => 64, 'sortable' => false),
+    'zip'     => array('type' => 'varchar', 'length' => 10, 'sortable' => true),
+    'city'    => array('type' => 'varchar', 'length' => 32, 'sortable' => true),
+    'state'   => array('type' => 'varchar', 'length' => 32, 'sortable' => true),
+    'country' => array('type' => 'varchar', 'length' => 2, 'sortable' => true),
+  );
+}
+
+function theme_postal($element) {
+  return theme('form_element', $element, $element['#children']);
 }
 
 function theme_postal_address($address) {

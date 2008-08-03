@@ -1,7 +1,6 @@
 <?php // $Id$
 /*
   TODO/wishlist:
-   - doesn't appear to be saving entries appropriately
    - Get ISO-3166-1 (and -2??) data for countries (and states??)
    - implement a nicer theme for form, including dropdowns and stuff
    - widget settings to show/hide various fields (names, country, etc.)
@@ -52,23 +51,20 @@ function postal_field_field_formatter_info() {
  * Implementation of hook_field_formatter().
  */
 function postal_field_field_formatter($field, $item, $formatter, $node) {
-
-  // scaffolding in room for more formatters later (e.g. vcard, hcard, etc)
   switch ($formatter) {
-    default: // the literal default string, actually
+    default: 
       return theme('postal_address', $item);
   }
 }
 
 function postal_field_widget($op, &$node, $field, &$items) {
-
   switch ($op) {
     case 'form':
-      // general set up for all postals
+      // General set up for all postal fields.
       $name = $field['field_name'];
       $form = array();
       $form[$name]['#type'] = 'fieldset';
-      $form[$name]['#tree'] = true;
+      $form[$name]['#tree'] = TRUE;
       $form[$name]['#title'] = $field['widget']['label'];
 
       if (!$items || $field['multiple']) {
@@ -77,14 +73,12 @@ function postal_field_widget($op, &$node, $field, &$items) {
       
       foreach ($items as $delta => $data) {
         $data['id'] = $name .'-'. $delta;
-        $o = (object) $data;
-        $form[$name][$delta] = postal_form($o);
+        $form[$name][$delta] = array(
+          '#type' => 'postal',
+          '#postal_address' => $data,
+        ); 
       }
 
       return $form;
-      
-    case 'process form values':
-      // nothing to do right now. scaffolding this in for later
-      break;
   }
 }
