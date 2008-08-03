@@ -1,116 +1,20 @@
-<?php
-/*
-  TODO/wishlist:
-   - doesn't appear to be saving entries appropriately
-   - Get ISO-3166-1 (and -2??) data for countries (and states??)
-   - implement a nicer theme for form, including dropdowns and stuff
-   - widget settings to show/hide various fields (names, country, etc.) 
-   - Add field_settings:tables/arguments/filters for field components (zip, street, etc)
-*/
+<?php // $Id$
 
-function postal_field_info() {
-  return array(
-    'postal' => array('label' => t('Postal Address')),
-  );
-}
-
-function postal_field($op, &$node, $field, &$node_field, $teaser, $page) {
-  switch ($op) {
-    case 'validate':
-  }
-}
-
-function postal_field_settings($op, $field) {
-  switch ($op) {
-    case 'database columns':
-      return postal_field_list();
-  }
-}
-
-function postal_widget_info() {
-  return array(
-    'postal' => array(
-      'label' => t('Address form'),
-      'field types' => array('postal'),
-    ),
-  );
-}
-
-/**
- * Implementation of hook_field_formatter_info().
- */
-function postal_field_formatter_info() {
-  return array(
-    'default' => array(
-      'label' => 'Default',
-      'field types' => array('postal'),
-    ),
-    'address_google' => array(
-      'label' => 'Address with google link',
-      'field types' => array('postal'),
-    ),
-    
-  );
-}
-
-/**
- * Implementation of hook_field_formatter().
- */
-function postal_field_formatter($field, $item, $formatter, $node) {
-
-  // scaffolding in room for more formatters later (e.g. vcard, hcard, etc)
-  switch($formatter) {
-    case 'address_google':
-      return theme('postal_address', $item, true);
-    default: // the literal default string, actually
-      return theme('postal_address', $item);
-  }
-}
-
-function postal_widget($op, &$node, $field, &$items) {
-
-  switch ($op) {
-    case 'form':
-      // general set up for all postals
-      $name = $field['field_name'];
-      $form = array();
-      $form[$name]['#type'] = 'fieldset';
-      $form[$name]['#tree'] = true;
-      $form[$name]['#title'] = $field['widget']['label'];
-
-      if (!$items || $field['multiple']) {
-        $items[] = (array) postal_address();
-      }
-      
-      foreach ($items as $delta => $data) {
-        $data['id'] = $name.'-'.$delta;
-        $o = (object) $data;
-        $form[$name][$delta] = postal_form($o);
-      }
-
-      return $form;
-      
-    case 'process form values':
-      // nothing to do right now. scaffolding this in for later
-      break;
-  }
-}
-
-function postal_field_list() {
+function postal_database_columns() {
   $fields = array(
-    'type'       => array('type' => 'varchar', 'length' => 100, 'sortable' => true),
-    'name'       => array('type' => 'varchar', 'length' => 100, 'sortable' => true),
-    'street1'    => array('type' => 'varchar', 'length' => 64, 'sortable' => false),
-    'street2'    => array('type' => 'varchar', 'length' => 64, 'sortable' => false),
-    'zip'        => array('type' => 'varchar', 'length' => 10, 'sortable' => true),
-    'city'       => array('type' => 'varchar', 'length' => 32, 'sortable' => true),
-    'state'      => array('type' => 'varchar', 'length' => 32, 'sortable' => true),
-    'country'    => array('type' => 'varchar', 'length' => 2, 'sortable' => true),
+    'type'    => array('type' => 'varchar', 'length' => 100, 'sortable' => true),
+    'name'    => array('type' => 'varchar', 'length' => 100, 'sortable' => true),
+    'street1' => array('type' => 'varchar', 'length' => 64, 'sortable' => false),
+    'street2' => array('type' => 'varchar', 'length' => 64, 'sortable' => false),
+    'zip'     => array('type' => 'varchar', 'length' => 10, 'sortable' => true),
+    'city'    => array('type' => 'varchar', 'length' => 32, 'sortable' => true),
+    'state'   => array('type' => 'varchar', 'length' => 32, 'sortable' => true),
+    'country' => array('type' => 'varchar', 'length' => 2, 'sortable' => true),
   );
   return $fields;
 }
 
-/* 
+/*
  *
  */
  // MARK - $values is never used in this function. what is it for?
@@ -129,14 +33,14 @@ function postal_address($address=null, $id=null, $values=array()) {
   $address->empty = true;
   
   foreach ($fields as $field) {
-    if(!array_key_exists($field, $address)) {
+    if (!array_key_exists($field, $address)) {
       $address->$field = '';
     }
-    elseif($address->$field) $address->empty = false;
+    elseif ($address->$field) $address->empty = false;
   }
 
-  foreach($values as $key => $val) {
-    if (($field = str_replace('postal_'.$id.'_', '', $key)) != $key) {
+  foreach ($values as $key => $val) {
+    if (($field = str_replace('postal_'. $id .'_', '', $key)) != $key) {
       if (in_array($field, $fields)) {
         $address->$field = $val;
       }
@@ -156,7 +60,7 @@ function postal_form(&$address, $fields=array(), $values=array()) {
   $id = is_object($address) ? $address->id : $address;
   $id = check_plain($id);
 
-  // initialize the address 
+  // initialize the address
   postal_address($address, $id, $values);
 
   $form = array();
@@ -206,43 +110,24 @@ function postal_form(&$address, $fields=array(), $values=array()) {
 
   // only show requested fields
   if ($fields) {
-    foreach($form as $field => $val) {
-      if(!in_array(''.$field, $fields)) unset($form[$field]);
+    foreach ($form as $field => $val) {
+      if (!in_array(''. $field, $fields)) unset($form[$field]);
     }
   }
   return $form;
 }
 
-function theme_postal_address($address, $google = false) {
-  
+function theme_postal_address($address) {
   $address = (object) $address;
-  
-  if ($address->view) {
-    return $address->view;
-  }
-  
   $out = '';
-  if($address->name)        $out .= $address->name;
-  if($address->street1)     $out .= '<br />'.$address->street1;
-  if($address->street2)     $out .= '<br />'.$address->street2;
-  if($address->city || $address->state || $address->zip) $out .= '<br />';
-  if($address->city)        $out .= $address->city . ', ';
-  if($address->state)       $out .= $address->state . ' ';
-  if($address->zip)         $out .= $address->zip;
-  if($address->country)     $out .= '<br />'.$address->country;
-  
-  if ($google) {
-    $acc = array();
-    foreach(array('street1', 'street2', 'city', 'state', 'zip', 'country') as $key) {
-      if ($address->{$key}) {
-        $acc[] = $address->{$key};
-      }
-    } 
-    if ($acc) {
-      $gqs = urlencode(implode(', ', $acc));
-      $out .= '<br />' . l(t('Google Map'), 'http://maps.google.com/maps', array('target' => '_blank'), "q=$gqs", NULL);
-    }
-  }
+  if ($address->name)        $out .= $address->name;
+  if ($address->street1)     $out .= '<br />'. $address->street1;
+  if ($address->street2)     $out .= '<br />'. $address->street2;
+  if ($address->city || $address->state || $address->zip) $out .= '<br />';
+  if ($address->city)        $out .= $address->city .', ';
+  if ($address->state)       $out .= $address->state .' ';
+  if ($address->zip)         $out .= $address->zip;
+  if ($address->country)     $out .= '<br />'. $address->country;
   
   return $out;
-}    
+}

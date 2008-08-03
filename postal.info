@@ -1,5 +1,3 @@
 ; $Id$
 name = Postal
-description = Defines an address field type 
-dependencies = content
-package = CCK
+description = Defines an address field element 
