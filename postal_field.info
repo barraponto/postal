@@ -1,5 +1,7 @@
 ; $Id$
 name = Postal Field
 description = Defines an address field type for CCK
-dependencies = content postal
+dependencies[] = content
+dependencies[] = postal
 package = CCK
+core = 6.x

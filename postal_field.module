@@ -7,12 +7,43 @@
    - Add field_settings:tables/arguments/filters for field components (zip, street, etc)
  */
 
-function postal_field_field_info() {
+/**
+ * Implementation of FAPI hook_elements().
+ */
+function postal_field_elements() {
+  $element = current(postal_elements());
+  $element['#columns'] = array_keys(postal_database_columns());
+  $element['#delta'] = 0;
+  array_unshift($element['#process'], 'postal_field_process');
+  return array('postal_field' => $element);
+
   return array(
-    'postal' => array('label' => t('Postal Address')),
+    'postal_field' => array(
+      '#input' => TRUE,
+      '#columns' => array_keys(postal_database_columns()),
+      '#delta' => 0,
+      '#process' => array('postal_field_process', 'postal_process'),
+      '#autocomplete_path' => FALSE,
+    ),
   );
 }
 
+/**
+ * Implementation of hook_field_info().
+ */
+function postal_field_field_info() {
+  return array(
+    'postal' => array('label' => t('Postal Address')),
+    'callbacks' => array(
+      'tables' => CONTENT_CALLBACK_DEFAULT,
+      'arguments' => CONTENT_CALLBACK_DEFAULT,
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_field().
+ */
 function postal_field_field($op, &$node, $field, &$node_field, $teaser, $page) {
   switch ($op) {
     case 'validate':
@@ -26,13 +57,42 @@ function postal_field_field_settings($op, $field) {
   }
 }
 
+/**
+ * Implementation of hook_content_is_empty().
+ */
+function postal_field_content_is_empty($item, $field) {
+  foreach (array_keys(postal_database_columns()) as $key) {
+    if (!empty($item[$key])) return FALSE;
+  }
+  return TRUE;
+}
+
+/**
+ * Implementation of hook_widget_info().
+ */
 function postal_field_widget_info() {
   return array(
-    'postal' => array(
+    'postal_field' => array(
       'label' => t('Address form'),
       'field types' => array('postal'),
+      'multiple values' => CONTENT_HANDLE_CORE,
+      'callbacks' => array(
+        'default value' => CONTENT_CALLBACK_DEFAULT,
+      ),
     ),
   );
+}
+
+/**
+ * Implementation of hook_widget().
+ */
+function postal_field_widget(&$form, &$form_state, $field, $items, $delta = 0) {
+  $element = array(
+    '#type' => 'postal',
+    '#postal_address' => (object) $items[$delta],
+    '#default_value' => isset($items[$delta]) ? $items[$delta] : NULL,
+  );
+  return $element;
 }
 
 /**
@@ -48,37 +108,14 @@ function postal_field_field_formatter_info() {
 }
 
 /**
- * Implementation of hook_field_formatter().
+ * Implementation of hook_theme().
  */
-function postal_field_field_formatter($field, $item, $formatter, $node) {
-  switch ($formatter) {
-    default: 
-      return theme('postal_address', $item);
-  }
+function postal_field_theme() {
+  return array(
+    'postal_field_formatter_default' => array('element' => NULL),
+  );
 }
 
-function postal_field_widget($op, &$node, $field, &$items) {
-  switch ($op) {
-    case 'form':
-      // General set up for all postal fields.
-      $name = $field['field_name'];
-      $form = array();
-      $form[$name]['#type'] = 'fieldset';
-      $form[$name]['#tree'] = TRUE;
-      $form[$name]['#title'] = $field['widget']['label'];
-
-      if (!$items || $field['multiple']) {
-        $items[] = (array) postal_address();
-      }
-      
-      foreach ($items as $delta => $data) {
-        $data['id'] = $name .'-'. $delta;
-        $form[$name][$delta] = array(
-          '#type' => 'postal',
-          '#postal_address' => $data,
-        ); 
-      }
-
-      return $form;
-  }
+function theme_postal_field_formatter_default($element) {
+  return theme('postal_address', (object) $element['#item']);
 }

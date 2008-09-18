@@ -5,7 +5,10 @@
  */
 function postal_elements() {
   return array(
-    'postal' => array('#input' => TRUE, '#process' => array('postal_element' => array())),
+    'postal' => array(
+      '#input' => TRUE,
+      '#process' => array('postal_process'),
+    ),
   );
 }
 
@@ -35,7 +38,7 @@ function postal_address($address=null, $id=null, $values=array()) {
   return $address;
 }
 
-function postal_element(&$element) {
+function postal_process(&$element, $form_state) {
   $element['#tree'] = TRUE;
 
   $id = is_object($address) ? $address->id : $address;
@@ -103,6 +106,16 @@ function postal_database_columns() {
     'city'    => array('type' => 'varchar', 'length' => 32, 'sortable' => true),
     'state'   => array('type' => 'varchar', 'length' => 32, 'sortable' => true),
     'country' => array('type' => 'varchar', 'length' => 2, 'sortable' => true),
+  );
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function postal_theme() {
+  return array(
+    'postal' => array('arguments' => array('element' => NULL)),
+    'postal_address' => array('arguments' => array('address' => NULL)),
   );
 }
 
