@@ -11,19 +11,11 @@
  * Implementation of FAPI hook_elements().
  */
 function postal_field_elements() {
-  $element = current(postal_elements());
-  $element['#columns'] = array_keys(postal_database_columns());
-  $element['#delta'] = 0;
-  array_unshift($element['#process'], 'postal_field_process');
-  return array('postal_field' => $element);
-
   return array(
     'postal_field' => array(
       '#input' => TRUE,
       '#columns' => array_keys(postal_database_columns()),
       '#delta' => 0,
-      '#process' => array('postal_field_process', 'postal_process'),
-      '#autocomplete_path' => FALSE,
     ),
   );
 }
