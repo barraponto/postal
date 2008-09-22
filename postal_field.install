@@ -1,0 +1,29 @@
+<?php //$Id%
+
+/**
+* Implementation of hook_install().
+*/
+function postal_field_install() {
+  content_notify('install', 'postal_field');
+}
+
+/**
+* Implementation of hook_uninstall().
+*/
+function postal_field_uninstall() {
+  content_notify('uninstall', 'postal_field');
+}
+
+/**
+* Implementation of hook_enable().
+*/
+function postal_field_enable() {
+  content_notify('enable', 'postal_field');
+}
+
+/**
+* Implementation of hook_disable().
+*/
+function postal_field_disable() {
+  content_notify('disable', 'postal_field');
+}
