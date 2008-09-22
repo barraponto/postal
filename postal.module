@@ -68,7 +68,6 @@ function postal_process(&$element, $form_state) {
   $element['locale'] = array(
     '#prefix' => '<div class="postal-locale">',
     '#suffix' => '</div>',
-    '#tree' => FALSE,
   );
   $element['locale']['city'] = array(
     '#type' => 'textfield',
@@ -76,12 +75,14 @@ function postal_process(&$element, $form_state) {
     '#default_value' => $address->city,
     '#size' => 15,
     '#maxlength' => 64,
+    '#parents' => array_merge($element['#parents'], array('city')),
     '#required' => $address->required,
   );
   $element['locale']['state'] = array(
     '#type' => 'textfield',
     '#title' => t('State / Province'),
     '#default_value' => $address->state,
+    '#parents' => array_merge($element['#parents'], array('state')),
     '#size' => 12,
     '#maxlength' => 64,
   );
@@ -89,6 +90,7 @@ function postal_process(&$element, $form_state) {
     '#type' => 'textfield',
     '#title' => t('Zip / Postal Code'),
     '#default_value' => $address->zip,
+    '#parents' => array_merge($element['#parents'], array('zip')),
     '#size' => 5,
     '#maxlength' => 20,
     '#required' => $address->required,
