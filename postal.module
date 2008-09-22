@@ -47,6 +47,8 @@ function postal_process(&$element, $form_state) {
   if (isset($element['#postal_address'])) {
     $address = postal_address($element['#postal_address']);
   }
+  $element['#prefix'] = '<div class="postal-form">';
+  $element['#suffix'] = '</div>';
   $element['street1'] = array(
     '#type' => 'textfield',
     '#title' => t('Street Address'),
@@ -63,26 +65,31 @@ function postal_process(&$element, $form_state) {
     '#maxlength' => 75,
     '#required' => false,
   );
-  $element['city'] = array(
+  $element['locale'] = array(
+    '#prefix' => '<div class="postal-locale">',
+    '#suffix' => '</div>',
+    '#tree' => FALSE,
+  );
+  $element['locale']['city'] = array(
     '#type' => 'textfield',
     '#title' => t('City'),
     '#default_value' => $address->city,
-    '#size' => 30,
+    '#size' => 15,
     '#maxlength' => 64,
     '#required' => $address->required,
   );
-  $element['state'] = array(
+  $element['locale']['state'] = array(
     '#type' => 'textfield',
     '#title' => t('State / Province'),
     '#default_value' => $address->state,
-    '#size' => 30,
+    '#size' => 12,
     '#maxlength' => 64,
   );
-  $element['zip'] = array(
+  $element['locale']['zip'] = array(
     '#type' => 'textfield',
     '#title' => t('Zip / Postal Code'),
     '#default_value' => $address->zip,
-    '#size' => 20,
+    '#size' => 5,
     '#maxlength' => 20,
     '#required' => $address->required,
   );
@@ -120,6 +127,7 @@ function postal_theme() {
 }
 
 function theme_postal($element) {
+  drupal_add_css(drupal_get_path('module', 'postal') . '/postal.css', all);
   return theme('form_element', $element, $element['#children']);
 }
 

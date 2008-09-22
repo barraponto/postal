@@ -1,0 +1,13 @@
+/* $Id$*/
+/* Postal default example stylesheet */
+
+.postal-form .form-item {
+  width: 420px;
+  margin: 0.75em;
+}
+
+.postal-locale .form-item {
+  margin: 0.75em;
+  width: 120px;
+  float: left;
+}
