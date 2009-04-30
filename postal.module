@@ -47,15 +47,16 @@ function postal_process(&$element, $form_state) {
   if (isset($element['#postal_address'])) {
     $address = postal_address($element['#postal_address']);
   }
+
   $element['#prefix'] = '<div class="postal-form">';
   $element['#suffix'] = '</div>';
   $element['street1'] = array(
     '#type' => 'textfield',
-    '#title' => t('Street Address'),
+    '#title' => $element['#title'] ? $element['#title'] : t('Street Address'),
     '#default_value' => $address->street1,
     '#size' => 50,
     '#maxlength' => 75,
-    '#required' => $address->required,
+    '#required' => $element['#required'],
   );
   $element['street2'] = array(
     '#type' => 'textfield',
@@ -63,7 +64,6 @@ function postal_process(&$element, $form_state) {
     '#default_value' => $address->street2,
     '#size' => 50,
     '#maxlength' => 75,
-    '#required' => false,
   );
   $element['locale'] = array(
     '#prefix' => '<div class="postal-locale">',
@@ -76,32 +76,42 @@ function postal_process(&$element, $form_state) {
     '#size' => 15,
     '#maxlength' => 64,
     '#parents' => array_merge($element['#parents'], array('city')),
-    '#required' => $address->required,
+    '#required' => $element['#required'],
   );
   $element['locale']['state'] = array(
     '#type' => 'textfield',
-    '#title' => t('State / Province'),
+    '#title' => t('State/Province'),
     '#default_value' => $address->state,
     '#parents' => array_merge($element['#parents'], array('state')),
     '#size' => 12,
     '#maxlength' => 64,
+    '#required' => $element['#required'],
   );
   $element['locale']['zip'] = array(
     '#type' => 'textfield',
-    '#title' => t('Zip / Postal Code'),
+    '#title' => t('Postal Code'),
     '#default_value' => $address->zip,
     '#parents' => array_merge($element['#parents'], array('zip')),
-    '#size' => 5,
+    '#size' => 10,
     '#maxlength' => 20,
-    '#required' => $address->required,
+    '#required' => $element['#required'],
   );
 
   // Only show requested fields.
   if (isset($element['#postal_fields'])) {
     foreach ($element as $field => $val) {
-      if (!in_array(''. $field, $element['#postal_fields'])) unset($element[$field]);
+      if (!in_array(''. $field, $element['#postal_fields'])) {
+        $element[$field]['#access'] = FALSE;
+      }
     }
   }
+
+  // The title was used on the street1 field.  It's redundant now.
+  if (isset($element['street1'])) unset($element['#title']);
+
+  // "Required" was passed through to the sub-elements.
+  unset($element['#required']);
+
   return $element;
 }
 
