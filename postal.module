@@ -140,7 +140,7 @@ function postal_theme() {
 
 function theme_postal($element) {
   drupal_add_css(drupal_get_path('module', 'postal') . '/postal.css', all);
-  return theme('form_element', $element, $element['#children']);
+  return $element['#children'];
 }
 
 function theme_postal_address($address) {
