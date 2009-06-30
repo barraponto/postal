@@ -67,7 +67,7 @@ function postal_process(&$element, $form_state) {
   );
   $element['locale'] = array(
     '#prefix' => '<div class="postal-locale">',
-    '#suffix' => '</div>',
+    '#suffix' => '</div><div style="clear: both"/>',
   );
   $element['locale']['city'] = array(
     '#type' => 'textfield',
