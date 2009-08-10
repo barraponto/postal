@@ -47,6 +47,9 @@ function postal_process(&$element, $form_state) {
   if (isset($element['#postal_address'])) {
     $address = postal_address($element['#postal_address']);
   }
+  elseif (isset($element['#default_value'])) {
+    $address = postal_address($element['#default_value']);
+  }
 
   $element['#prefix'] = '<div class="postal-form">';
   $element['#suffix'] = '</div>';
