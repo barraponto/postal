@@ -25,7 +25,7 @@ function postal_field_elements() {
  */
 function postal_field_field_info() {
   return array(
-    'postal' => array('label' => t('Postal Address')),
+    'postal' => array('label' => t('Postal address')),
     'callbacks' => array(
       'tables' => CONTENT_CALLBACK_DEFAULT,
       'arguments' => CONTENT_CALLBACK_DEFAULT,
@@ -72,6 +72,14 @@ function postal_field_widget_info() {
         'default value' => CONTENT_CALLBACK_DEFAULT,
       ),
     ),
+    'postal_general' => array(
+      'label' => t('Address component (state, city or zip)'),
+      'field types' => array('postal'),
+      'multiple values' => CONTENT_HANDLE_CORE,
+      'callbacks' => array(
+        'default value' => CONTENT_CALLBACK_DEFAULT,
+      ),
+    ),
   );
 }
 
@@ -80,7 +88,7 @@ function postal_field_widget_info() {
  */
 function postal_field_widget(&$form, &$form_state, $field, $items, $delta = 0) {
   $element = array(
-    '#type' => 'postal',
+    '#type' => str_replace('_field', '', $field['widget']['type']),
     '#postal_address' => (object) $items[$delta],
     '#default_value' => isset($items[$delta]) ? $items[$delta] : NULL,
   );
@@ -96,6 +104,22 @@ function postal_field_field_formatter_info() {
       'label' => 'Default',
       'field types' => array('postal'),
     ),
+    'country' => array(
+      'label' => t('Country'),
+      'field types' => array('postal'),
+    ),
+    'city' => array(
+      'label' => t('City'),
+      'field types' => array('postal'),
+    ),
+    'state' => array(
+      'label' => t('State'),
+      'field types' => array('postal'),
+    ),
+    'zip' => array(
+      'label' => t('Postal code'),
+      'field types' => array('postal'),
+    ),
   );
 }
 
@@ -103,11 +127,20 @@ function postal_field_field_formatter_info() {
  * Implementation of hook_theme().
  */
 function postal_field_theme() {
-  return array(
-    'postal_field_formatter_default' => array('element' => NULL),
-  );
+  $theme = array();
+  foreach (array('default', 'country', 'city', 'state', 'zip') as $func) {
+    $theme['postal_field_formatter_'. $func] = array(
+      'arguments' => array('element' => NULL, 'function' => 'postal_'. $func),
+      'function' => 'postal_field_formatter_all',
+    );
+  }
+  return $theme;
 }
 
-function theme_postal_field_formatter_default($element) {
-  return theme('postal_address', (object) $element['#item']);
+function theme_postal_field_formatter_all($element, $function) {
+  // Use theme_postal_address for the default item.
+  if ($function == 'postal_default') $function = 'postal_address';
+
+  // Call the "real" theme function with the item we've received.
+  return theme($function, (object) $element['#item']);
 }

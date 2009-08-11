@@ -13,18 +13,13 @@ function postal_schema() {
           'unsigned' => TRUE,
           'not null' => TRUE,
         ),
+        'type' => array(
+          'type' => 'varchar',
+          'length' => 32,
+        ),
         'parent_id' => array(
           'type' => 'int',
           'unsigned' => TRUE,
-        ),
-        'status' => array(
-          'type' => 'int',
-          'size' => 'tiny',
-        ),
-        'weight' => array(
-          'type' => 'int',
-          'not null' => TRUE,
-          'default' => 0,
         ),
         'iso' => array(
           'type' => 'char',
@@ -38,6 +33,10 @@ function postal_schema() {
           'type' => 'int',
         ),
         'fips' => array(
+          'type' => 'char',
+          'length' => 2,
+        ),
+        'code' => array(
           'type' => 'char',
           'length' => 2,
         ),
@@ -58,6 +57,42 @@ function postal_schema() {
         ),
       ),
       'primary key' => array('id'),
+    ),
+    'postal_admin' => array(
+      'description' => t('Stores information about locations as relative to the site.'),
+      'fields' => array(
+        'id' => array(
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'scope' => array(
+          'type' => 'varchar',
+          'length' => 100,
+        ),
+        'status' => array(
+          'type' => 'int',
+          'size' => 'tiny',
+          'not null' => TRUE,
+          'default' => 1,
+        ),
+        'default' => array(
+          'type' => 'int',
+          'size' => 'tiny',
+          'not null' => TRUE,
+          'default' => 0,
+        ),
+        'weight' => array(
+          'type' => 'int',
+          'not null' => TRUE,
+          'default' => 0,
+        ),
+        'name' => array(
+          'type' => 'varchar',
+          'length' => 200,
+        ),
+      ),
+      'primary key' => array('id', 'scope'),
     ),
   );
 }
@@ -83,4 +118,14 @@ function postal_enable() {
  */
 function postal_uninstall() {
   drupal_uninstall_schema('postal');
+}
+
+function postal_update_6001() {
+  drupal_get_schema(NULL, TRUE);
+  drupal_install_schema('postal');
+
+  // Collect a current list of countries.
+  module_load_include('admin.inc', 'postal', 'includes/postal');
+  postal_admin_load_countries();
+  return array();
 }
