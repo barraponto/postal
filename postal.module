@@ -49,6 +49,8 @@ function postal_process(&$element, $form_state) {
     $address = postal_address($element['#default_value']);
   }
 
+  $country = $address->country;
+
   $element['#prefix'] = '<div class="postal-form">';
   $element['#suffix'] = '</div>';
   $element['street1'] = array(
@@ -79,15 +81,30 @@ function postal_process(&$element, $form_state) {
     '#parents' => array_merge($element['#parents'], array('city')),
     '#required' => $element['#required'],
   );
-  $element['locale']['state'] = array(
-    '#type' => 'textfield',
-    '#title' => t('State/Province'),
-    '#default_value' => $address->state,
-    '#parents' => array_merge($element['#parents'], array('state')),
-    '#size' => 12,
-    '#maxlength' => 64,
-    '#required' => $element['#required'],
-  );
+
+  // We don't know if country has states.
+  if (is_null($country->children)) {
+    $element['locale']['state'] = array(
+      '#type' => 'textfield',
+      '#title' => t('State/Province'),
+      '#default_value' => $address->state,
+      '#parents' => array_merge($element['#parents'], array('state')),
+      '#size' => 12,
+      '#maxlength' => 64,
+      '#required' => $element['#required'],
+    );
+  }
+  elseif ($country->children > 0) {
+    $element['locale']['state'] = array(
+      '#type' => 'select',
+      '#title' => t('State/Province'),
+      '#default_value' => $address->state,
+      '#parents' => array_merge($element['#parents'], array('state')),
+      '#options' => postal_country_state_names($country->code),
+      '#required' => $element['#required'],
+    );
+  }
+
   $element['locale']['zip'] = array(
     '#type' => 'textfield',
     '#title' => t('Postal code'),
@@ -122,10 +139,14 @@ function postal_process(&$element, $form_state) {
 function postal_general_process(&$element, $form_state) {
   if (!$o = $element['#postal_settings']) $o = array();
 
+  $address = postal_address($element['#value']);
+
   $element['#tree'] = TRUE;
 
+  $countries = postal_country_names();
+
   // Respect any user-configured labels for these elements.
-  $type_label = isset($o['type_label']) ? $o['type_label'] : t('Location type');
+  $type_label = isset($o['type_label']) ? $o['type_label'] : $element['#title'];
   $country = isset($o['country_label']) ? $o['country_label'] : t('Country');
   $state   = isset($o['state_label']) ? $o['state_label'] : t('State/Province');
   $city    = isset($o['city_label']) ? $o['city_label'] : t('City');
@@ -158,37 +179,63 @@ function postal_general_process(&$element, $form_state) {
     '#access' => (count($types) > 1),
   );
   $element['country'] = array(
-    '#type' => 'textfield',
+    '#type' => 'select',
+    '#multiple' => FALSE,
+    '#options' => $countries,
     '#title' => $country,
     '#default_value' => $address->country,
-    '#size' => 15,
-    '#maxlength' => 64,
     '#required' => $element['#required'],
+    '#ahah' => array(
+      'path' => 'postal/js/postal_ahah/'. join('/', $element['#array_parents']),
+      'wrapper' => $element['#id'] .'-wrapper',
+      'method' => 'replace',
+      'effect' => 'fade',
+    ),
   );
-  $element['state'] = array(
-    '#type' => 'textfield',
-    '#title' => $state,
-    '#default_value' => $address->state,
-    '#size' => 12,
-    '#maxlength' => 64,
-    '#required' => $element['#required'],
-  );
-  $element['city'] = array(
-    '#type' => 'textfield',
-    '#title' => $city,
-    '#default_value' => $address->city,
-    '#size' => 15,
-    '#maxlength' => 64,
-    '#required' => $element['#required'],
-  );
-  $element['zip'] = array(
-    '#type' => 'textfield',
-    '#title' => $zip,
-    '#default_value' => $address->zip,
-    '#size' => 10,
-    '#maxlength' => 20,
-    '#required' => $element['#required'],
-  );
+  if ($address->country) {
+    $country = postal_country_load($address->country);
+    if (is_null($country->children)) {
+     $element['locale']['state'] = array(
+       '#type' => 'textfield',
+       '#title' => $state,
+       '#default_value' => $address->state,
+       '#parents' => array_merge($element['#parents'], array('state')),
+       '#size' => 12,
+       '#maxlength' => 64,
+       '#required' => $element['#required'],
+       '#access' => isset($types['state']),
+     );
+    }
+    elseif ($country->children > 0) {
+     $element['locale']['state'] = array(
+       '#type' => 'select',
+       '#title' => $state,
+       '#default_value' => $address->state,
+       '#parents' => array_merge($element['#parents'], array('state')),
+       '#options' => postal_country_state_names($country->code),
+       '#required' => $element['#required'],
+       '#access' => isset($types['state']),
+     );
+    }
+    $element['city'] = array(
+      '#type' => 'textfield',
+      '#title' => $city,
+      '#default_value' => $address->city,
+      '#size' => 15,
+      '#maxlength' => 64,
+      '#required' => $element['#required'],
+      '#access' => isset($types['city']),
+    );
+    $element['zip'] = array(
+      '#type' => 'textfield',
+      '#title' => $zip,
+      '#default_value' => $address->zip,
+      '#size' => 10,
+      '#maxlength' => 20,
+      '#required' => $element['#required'],
+      '#access' => isset($types['zip']),
+    );
+  }
 
   return $element;
 }
@@ -238,7 +285,8 @@ function postal_address($address = NULL, $id = NULL, $values = array()) {
     $address->id = $id ? $id : 'default';
   }
   else {
-    $address = (object) $address; // MARK - address might be a string according to postal_form
+    if (isset($address['#item'])) $address = $address['#item'];
+    $address = (object) $address;
   }
   
   $address->empty = TRUE;
@@ -333,7 +381,8 @@ function postal_country_states($countries = array(), $scope = NULL) {
     // according to the configuration for that scope.
     if ($scope) {
       $scope = check_plain($scope);
-      $sql = "SELECT s.*, c.code FROM {postal} s, {postal} c, {postal_admin} a
+      $sql = "SELECT s.*, c.code AS country 
+        FROM {postal} s, {postal} c, {postal_admin} a
         WHERE a.id = s.id
         AND a.scope = '$scope'
         AND s.parent_id = c.id
@@ -344,7 +393,8 @@ function postal_country_states($countries = array(), $scope = NULL) {
 
     // Include all entries.
     else {
-      $sql = "SELECT s.*, c.code FROM {postal} s, {postal} c
+      $sql = "SELECT s.*, c.code AS country 
+        FROM {postal} s, {postal} c
         WHERE s.parent_id = c.id
         AND s.type = 'state' AND c.type = 'country' $filter
         ORDER BY s.parent_id, s.name";
@@ -352,10 +402,42 @@ function postal_country_states($countries = array(), $scope = NULL) {
     $res = db_query($sql);
 
     while ($row = db_fetch_object($res)) {
-      $result[$country][$row->code] = $cache[$country][$row->code] = $row;
+      $result[$row->country][$row->code] = $cache[$row->country][$row->code] = $row;
     }
+
   }
 
   if ($single) return current($result);
   return $result;
+}
+
+function postal_country_names($countries = NULL, $scope = NULL) {
+  $names = array();
+  foreach (postal_country_load($countries, $scope) as $country) {
+    $names[$country->code] = $country->name;
+  }
+  return $names;
+}
+
+function postal_country_state_names($country, $scope = NULL) {
+  $names = array();
+  foreach (postal_country_states($country, $scope) as $state) {
+    $names[$state->code] = $state->name;
+  }
+  return $names;
+}
+
+/**
+ * API function: expand the state and/or country codes in an address object
+ * to their full names, if available.
+ */
+function postal_set_names($address) {
+  if ($address->state) {
+    $names = postal_country_state_names($address->country);
+    if (isset($names[$address->state])) $address->state = $names[$address->state];
+  }
+  if ($address->country && $country = postal_country_load($address->country)) {
+    $address->country = $country->name;
+  }
+  return $address;
 }

@@ -23,5 +23,11 @@ function postal_menu_menu() {
       'file' => 'postal.admin.inc',
       'file path' => $path,
     ),
+    'postal/js/postal_ahah' => array(
+      'page callback'    => 'postal_ahah_js',
+      'access arguments' => array('access content'),
+      'file'             => 'postal.form.inc',
+      'file path'        => $path,
+    ),
   );
 }

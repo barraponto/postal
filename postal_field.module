@@ -1,7 +1,6 @@
 <?php // $Id$
 /*
   TODO/wishlist:
-   - Get ISO-3166-1 (and -2??) data for countries (and states??)
    - implement a nicer theme for form, including dropdowns and stuff
    - widget settings to show/hide various fields (names, country, etc.)
    - Add field_settings:tables/arguments/filters for field components (zip, street, etc)
@@ -126,21 +125,11 @@ function postal_field_field_formatter_info() {
 /**
  * Implementation of hook_theme().
  */
-function postal_field_theme() {
-  $theme = array();
+function postal_field_theme($existing, $type, $theme, $path) {
+  $registry = array();
   foreach (array('default', 'country', 'city', 'state', 'zip') as $func) {
-    $theme['postal_field_formatter_'. $func] = array(
-      'arguments' => array('element' => NULL, 'function' => 'postal_'. $func),
-      'function' => 'postal_field_formatter_all',
-    );
+    $function = ($func == 'default') ? 'postal_address' : 'postal_'. $func;
+    $registry['postal_field_formatter_'. $func] = $existing[$function];
   }
-  return $theme;
-}
-
-function theme_postal_field_formatter_all($element, $function) {
-  // Use theme_postal_address for the default item.
-  if ($function == 'postal_default') $function = 'postal_address';
-
-  // Call the "real" theme function with the item we've received.
-  return theme($function, (object) $element['#item']);
+  return $registry;
 }
