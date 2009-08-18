@@ -4,6 +4,7 @@
 * Implementation of hook_install().
 */
 function postal_field_install() {
+  drupal_load('module', 'content');
   content_notify('install', 'postal_field');
 }
 
@@ -11,6 +12,7 @@ function postal_field_install() {
 * Implementation of hook_uninstall().
 */
 function postal_field_uninstall() {
+  drupal_load('module', 'content');
   content_notify('uninstall', 'postal_field');
 }
 
@@ -18,6 +20,7 @@ function postal_field_uninstall() {
 * Implementation of hook_enable().
 */
 function postal_field_enable() {
+  drupal_load('module', 'content');
   content_notify('enable', 'postal_field');
 }
 
@@ -25,5 +28,6 @@ function postal_field_enable() {
 * Implementation of hook_disable().
 */
 function postal_field_disable() {
+  drupal_load('module', 'content');
   content_notify('disable', 'postal_field');
 }
