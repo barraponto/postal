@@ -88,10 +88,10 @@ function postal_address($address = NULL, $id = NULL, $values = array()) {
     $address = new stdClass();
     $address->id = $id ? $id : 'default';
   }
-  else {
-    if (isset($address['#item'])) $address = $address['#item'];
-    $address = (object) $address;
+  elseif (is_array($address) && isset($address['#item'])) {
+    $address = $address['#item'];
   }
+  $address = (object) $address;
   
   $address->empty = TRUE;
   
