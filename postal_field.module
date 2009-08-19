@@ -1,23 +1,10 @@
 <?php // $Id$
 /*
   TODO/wishlist:
-   - implement a nicer theme for form, including dropdowns and stuff
+   - implement a nicer theme for form, including dropdowns and stuff.
    - widget settings to show/hide various fields (names, country, etc.)
-   - Add field_settings:tables/arguments/filters for field components (zip, street, etc)
+   - Add views tables/arguments/filters for field components (zip, street, etc.)
  */
-
-/**
- * Implementation of FAPI hook_elements().
- */
-function postal_field_elements() {
-  return array(
-    'postal_field' => array(
-      '#input' => TRUE,
-      '#columns' => array_keys(postal_database_columns()),
-      '#delta' => 0,
-    ),
-  );
-}
 
 /**
  * Implementation of hook_field_info().
@@ -41,8 +28,12 @@ function postal_field_field($op, &$node, $field, &$node_field, $teaser, $page) {
   }
 }
 
+/**
+ * Implementation of hook_field_settings().
+ */
 function postal_field_field_settings($op, $field) {
   switch ($op) {
+
     case 'database columns':
       return postal_database_columns();
   }
@@ -52,10 +43,9 @@ function postal_field_field_settings($op, $field) {
  * Implementation of hook_content_is_empty().
  */
 function postal_field_content_is_empty($item, $field) {
-  foreach (array_keys(postal_database_columns()) as $key) {
-    if (!empty($item[$key])) return FALSE;
-  }
-  return TRUE;
+  // The postal API already determines whether an address is empty - use that.
+  $address = postal_address($item);
+  return $address->empty;
 }
 
 /**
@@ -83,12 +73,34 @@ function postal_field_widget_info() {
 }
 
 /**
+ * Implementation of hook_widget_settings().
+ */
+function postal_field_widget_settings($op, $widget) {
+  switch ($op) {
+
+    case 'form':
+      module_load_include('form.inc', 'postal', 'includes/postal');
+
+      // Use the "settings" callbacks from the the postal API.
+      $func = 'postal_form_'. $widget['type'] .'_settings';
+      if (function_exists($func)) {
+        return array('postal' => $func($widget['postal']));
+      }
+      return; 
+
+    case 'save':
+      return array('postal');
+  }
+}
+
+/**
  * Implementation of hook_widget().
  */
 function postal_field_widget(&$form, &$form_state, $field, $items, $delta = 0) {
   $element = array(
+    '#title' => $field['widget']['label'],
     '#type' => str_replace('_field', '', $field['widget']['type']),
-    '#postal_address' => (object) $items[$delta],
+    '#postal_settings' => $field['widget']['postal'],
     '#default_value' => isset($items[$delta]) ? $items[$delta] : NULL,
   );
   return $element;

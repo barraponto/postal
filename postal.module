@@ -24,10 +24,12 @@ function postal_elements() {
     'postal' => array(
       '#input' => TRUE,
       '#process' => array('postal_process'),
+      '#columns' => array_keys(postal_database_columns()),
     ),
     'postal_general' => array(
       '#input' => TRUE,
-      '#process' => array('postal_general_process'),
+      '#process' => array('postal_process'),
+      '#columns' => array_keys(postal_database_columns()),
     ),
   );
 }
@@ -36,208 +38,10 @@ function postal_elements() {
  * An element #process callback for postal elements.
  */
 function postal_process(&$element, $form_state) {
-  if (!$settings = $element['#postal_settings']) $settings = array();
-  $element['#tree'] = TRUE;
-
-  $id = is_object($address) ? $address->id : $address;
-  $id = check_plain($id);
-
-  if (isset($element['#postal_address'])) {
-    $address = postal_address($element['#postal_address']);
+  module_load_include('form.inc', 'postal', 'includes/postal');
+  if (function_exists($func = 'postal_form_process_'. $element['#type'])) {
+    return $func($element, $form_state);
   }
-  elseif (isset($element['#default_value'])) {
-    $address = postal_address($element['#default_value']);
-  }
-
-  $country = $address->country;
-
-  $element['#prefix'] = '<div class="postal-form">';
-  $element['#suffix'] = '</div>';
-  $element['street1'] = array(
-    '#type' => 'textfield',
-    '#title' => $element['#title'] ? $element['#title'] : t('Street Address'),
-    '#default_value' => $address->street1,
-    '#size' => 50,
-    '#maxlength' => 75,
-    '#required' => $element['#required'],
-  );
-  $element['street2'] = array(
-    '#type' => 'textfield',
-    '#title' => '',
-    '#default_value' => $address->street2,
-    '#size' => 50,
-    '#maxlength' => 75,
-  );
-  $element['locale'] = array(
-    '#prefix' => '<div class="postal-locale">',
-    '#suffix' => '</div><div style="clear: both"/>',
-  );
-  $element['locale']['city'] = array(
-    '#type' => 'textfield',
-    '#title' => t('City'),
-    '#default_value' => $address->city,
-    '#size' => 15,
-    '#maxlength' => 64,
-    '#parents' => array_merge($element['#parents'], array('city')),
-    '#required' => $element['#required'],
-  );
-
-  // We don't know if country has states.
-  if (is_null($country->children)) {
-    $element['locale']['state'] = array(
-      '#type' => 'textfield',
-      '#title' => t('State/Province'),
-      '#default_value' => $address->state,
-      '#parents' => array_merge($element['#parents'], array('state')),
-      '#size' => 12,
-      '#maxlength' => 64,
-      '#required' => $element['#required'],
-    );
-  }
-  elseif ($country->children > 0) {
-    $element['locale']['state'] = array(
-      '#type' => 'select',
-      '#title' => t('State/Province'),
-      '#default_value' => $address->state,
-      '#parents' => array_merge($element['#parents'], array('state')),
-      '#options' => postal_country_state_names($country->code),
-      '#required' => $element['#required'],
-    );
-  }
-
-  $element['locale']['zip'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Postal code'),
-    '#default_value' => $address->zip,
-    '#parents' => array_merge($element['#parents'], array('zip')),
-    '#size' => 10,
-    '#maxlength' => 20,
-    '#required' => $element['#required'],
-  );
-
-  // Only show requested fields.
-  if (isset($element['#postal_fields'])) {
-    foreach ($element as $field => $val) {
-      if (!in_array(''. $field, $element['#postal_fields'])) {
-        $element[$field]['#access'] = FALSE;
-      }
-    }
-  }
-
-  // The title was used on the street1 field.  It's redundant now.
-  if (isset($element['street1'])) unset($element['#title']);
-
-  // "Required" was passed through to the sub-elements.
-  unset($element['#required']);
-
-  return $element;
-}
-
-/**
- * An element #process callback for postal_general elements.
- */
-function postal_general_process(&$element, $form_state) {
-  if (!$o = $element['#postal_settings']) $o = array();
-
-  $address = postal_address($element['#value']);
-
-  $element['#tree'] = TRUE;
-
-  $countries = postal_country_names();
-
-  // Respect any user-configured labels for these elements.
-  $type_label = isset($o['type_label']) ? $o['type_label'] : $element['#title'];
-  $country = isset($o['country_label']) ? $o['country_label'] : t('Country');
-  $state   = isset($o['state_label']) ? $o['state_label'] : t('State/Province');
-  $city    = isset($o['city_label']) ? $o['city_label'] : t('City');
-  $zip     = isset($o['zip_label']) ? $o['zip_label'] : t('Postal code');
-
-  // These are the types of granularity this input can support.
-  $types = array(
-    'country' => $country,
-    'state'   => $state,
-    'city'    => $city,
-    'zip'     => $zip,
-  );
-
-  // Limit the granularity selection based on configuration settings.
-  if (isset($o['selection_types'])) {
-    foreach ($o['selection_types'] as $type => $status) {
-      if (!$status) unset($types[$type]);
-    }
-  }
-
-  // Set the default value if there's only one selected type.
-  if (count($types == 1)) $address->type = current(array_keys($types));
-
-  $element['type'] = array(
-    '#type' => 'select',
-    '#title' => $type_label,
-    '#options' => $types,
-    '#default_value' => $address->type,
-    '#required' => $element['#required'],
-    '#access' => (count($types) > 1),
-  );
-  $element['country'] = array(
-    '#type' => 'select',
-    '#multiple' => FALSE,
-    '#options' => $countries,
-    '#title' => $country,
-    '#default_value' => $address->country,
-    '#required' => $element['#required'],
-    '#ahah' => array(
-      'path' => 'postal/js/postal_ahah/'. join('/', $element['#array_parents']),
-      'wrapper' => $element['#id'] .'-wrapper',
-      'method' => 'replace',
-      'effect' => 'fade',
-    ),
-  );
-  if ($address->country) {
-    $country = postal_country_load($address->country);
-    if (is_null($country->children)) {
-     $element['locale']['state'] = array(
-       '#type' => 'textfield',
-       '#title' => $state,
-       '#default_value' => $address->state,
-       '#parents' => array_merge($element['#parents'], array('state')),
-       '#size' => 12,
-       '#maxlength' => 64,
-       '#required' => $element['#required'],
-       '#access' => isset($types['state']),
-     );
-    }
-    elseif ($country->children > 0) {
-     $element['locale']['state'] = array(
-       '#type' => 'select',
-       '#title' => $state,
-       '#default_value' => $address->state,
-       '#parents' => array_merge($element['#parents'], array('state')),
-       '#options' => postal_country_state_names($country->code),
-       '#required' => $element['#required'],
-       '#access' => isset($types['state']),
-     );
-    }
-    $element['city'] = array(
-      '#type' => 'textfield',
-      '#title' => $city,
-      '#default_value' => $address->city,
-      '#size' => 15,
-      '#maxlength' => 64,
-      '#required' => $element['#required'],
-      '#access' => isset($types['city']),
-    );
-    $element['zip'] = array(
-      '#type' => 'textfield',
-      '#title' => $zip,
-      '#default_value' => $address->zip,
-      '#size' => 10,
-      '#maxlength' => 20,
-      '#required' => $element['#required'],
-      '#access' => isset($types['zip']),
-    );
-  }
-
-  return $element;
 }
 
 /**
@@ -274,7 +78,7 @@ function postal_database_columns() {
 }
 
 /**
- * API Function: return an address objet, formatted as postal would expect
+ * API Function: return an address object, formatted as postal would expect
  * to find it.
  */
 function postal_address($address = NULL, $id = NULL, $values = array()) {
@@ -301,6 +105,9 @@ function postal_address($address = NULL, $id = NULL, $values = array()) {
   return $address;
 }
 
+/**
+ * API function: Load information about one or more countries.
+ */
 function postal_country_load($countries = NULL, $scope = NULL, $reset = FALSE) {
   static $cache = array();
   if ($reset) $cache = array();
@@ -353,6 +160,9 @@ function postal_country_load($countries = NULL, $scope = NULL, $reset = FALSE) {
   return $result;
 }
 
+/**
+ * API function: return an array of state entries for one or more countries.
+ */
 function postal_country_states($countries = array(), $scope = NULL) {
   static $cache = array();
   $result = $fetch = $info = array();
@@ -411,6 +221,9 @@ function postal_country_states($countries = array(), $scope = NULL) {
   return $result;
 }
 
+/**
+ * API function: Return an array of code => name country names.
+ */
 function postal_country_names($countries = NULL, $scope = NULL) {
   $names = array();
   foreach (postal_country_load($countries, $scope) as $country) {
@@ -419,6 +232,10 @@ function postal_country_names($countries = NULL, $scope = NULL) {
   return $names;
 }
 
+/**
+ * API function: Return an array of code => name state/province entries
+ * for a given country.
+ */
 function postal_country_state_names($country, $scope = NULL) {
   $names = array();
   foreach (postal_country_states($country, $scope) as $state) {
