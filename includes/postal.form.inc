@@ -3,9 +3,8 @@
 /**
  * An element #process callback for postal elements.
  */
-function postal_form_process_postal(&$element, $form_state) {
+function postal_form_process_postal($element, $edit, &$form_state, $form) {
   if (!$settings = $element['#postal_settings']) $settings = array();
-  $element['#tree'] = TRUE;
 
   $id = is_object($address) ? $address->id : $address;
   $id = check_plain($id);
@@ -104,21 +103,27 @@ function postal_form_process_postal(&$element, $form_state) {
 /**
  * An element #process callback for postal_general elements.
  */
-function postal_form_process_postal_general(&$element, $form_state) {
-  drupal_set_message("defaults". print_r($element, 1));
+function postal_form_process_postal_general($element, $edit, &$form_state, $form) {
   if (!$o = $element['#postal_settings']) $o = array();
+  $id = $element['#id'];
+  $none = array('' => t('- None -'));
+
+  // During an AHAH callback, $edit will have our values on the first pass.
+  // Store this value so it's available for the second call.
+  if ($edit) $form_state[$id] = postal_element_value($element, $edit);
+
+  // If the stored value exists, set the element's value accordingly.
+  if (isset($form_state[$id])) $element['#value'] = $form_state[$id];
 
   $address = postal_address($element['#value']);
-  print_r($address); 
-
-  $element['#tree'] = TRUE;
 
   // Respect any user-configured labels for these elements.
-  $type_label = isset($o['type_label']) ? $o['type_label'] : $element['#title'];
-  $country = isset($o['country_label']) ? $o['country_label'] : t('Country');
-  $state   = isset($o['state_label']) ? $o['state_label'] : t('State/Province');
-  $city    = isset($o['city_label']) ? $o['city_label'] : t('City');
-  $zip     = isset($o['zip_label']) ? $o['zip_label'] : t('Postal code');
+  $labels = $o['labels'];
+  $type_label = $labels['type'] ? $labels['type'] : $element['#title'];
+  $country = $labels ? $labels['country'] : t('Country');
+  $state   = $labels ? $labels['state'] : t('State/Province');
+  $city    = $labels ? $labels['city'] : t('City');
+  $zip     = $labels ? $labels['zip'] : t('Postal code');
 
   // These are the types of granularity this input can support.
   $types = array(
@@ -135,6 +140,10 @@ function postal_form_process_postal_general(&$element, $form_state) {
     }
   }
 
+  // Don't allow users to select country/state-level inputs if they're hiding.
+  if ($o['force_country']) unset($types['country']);
+  if ($o['force_state']) unset($types['state']);
+
   // Set the default value if there's only one selected type.
   if (count($types) == 1) {
     $address->type = current(array_keys($types));
@@ -146,10 +155,26 @@ function postal_form_process_postal_general(&$element, $form_state) {
     $element['type'] = array(
       '#type' => 'select',
       '#title' => $type_label,
-      '#options' => $types,
+      '#options' => $none + $types,
       '#default_value' => $address->type,
       '#required' => $element['#required'],
     );
+
+    // Hide a potentially redundant title.
+    if ($type_label == $element['#title']) unset($element['#title']);
+
+    // Hide the non-pertinent inputs.
+    $js = 'Drupal.behaviors.postalGeneral = function(context) {
+      $("#'. $id .'-type").change( function() {
+        var typeValue = $(this).val();
+        $("div[id*='. $id .'-]:not(#'. $id .'-wrapper):not(#'. $id .'-type-wrapper)").hide();
+        $("#'. $id .'-" + typeValue + "-wrapper").show();
+        if (typeValue=="state" || typeValue=="city") { $("#'. $id .'-country-wrapper").show(); }
+        if (typeValue=="city") { $("#'. $id .'-state-wrapper").show(); }
+      });
+      $("#'. $id .'-type").trigger("change");
+    }';
+    drupal_add_js($js, 'inline');
   }
 
   if ($address->country && $o['force_country']) {
@@ -158,11 +183,12 @@ function postal_form_process_postal_general(&$element, $form_state) {
     );
   }
   else {
+    $countries = $none + postal_country_names();
     $element['country'] = array(
       '#type' => 'select',
       '#multiple' => FALSE,
-      '#options' => postal_country_names(),
-      '#title' => $country,
+      '#options' => $countries,
+      '#title' => t('Country'),
       '#default_value' => $address->country,
       '#required' => $element['#required'],
       '#ahah' => array(
@@ -184,11 +210,10 @@ function postal_form_process_postal_general(&$element, $form_state) {
       );
     }
     elseif (is_null($country->children)) {
-     $element['locale']['state'] = array(
+     $element['state'] = array(
        '#type' => 'textfield',
-       '#title' => $state,
+       '#title' => t('State/province'),
        '#default_value' => $address->state,
-       '#parents' => array_merge($element['#parents'], array('state')),
        '#size' => 12,
        '#maxlength' => 64,
        '#required' => $element['#required'],
@@ -196,19 +221,19 @@ function postal_form_process_postal_general(&$element, $form_state) {
      );
     }
     elseif ($country->children > 0) {
-     $element['locale']['state'] = array(
-       '#type' => 'select',
-       '#title' => $state,
-       '#default_value' => $address->state,
-       '#parents' => array_merge($element['#parents'], array('state')),
-       '#options' => postal_country_state_names($country->code),
-       '#required' => $element['#required'],
-       '#access' => $state_access,
-     );
+      $states = $none + postal_country_state_names($country->code);
+      $element['state'] = array(
+        '#type' => 'select',
+        '#title' => t('State/province'),
+        '#default_value' => $address->state,
+        '#options' => $states,
+        '#required' => $element['#required'],
+        '#access' => $state_access,
+      );
     }
     $element['city'] = array(
       '#type' => 'textfield',
-      '#title' => $city,
+      '#title' => t('City'),
       '#default_value' => $address->city,
       '#size' => 15,
       '#maxlength' => 64,
@@ -217,13 +242,31 @@ function postal_form_process_postal_general(&$element, $form_state) {
     );
     $element['zip'] = array(
       '#type' => 'textfield',
-      '#title' => $zip,
+      '#title' => t('Postal code'),
       '#default_value' => $address->zip,
       '#size' => 10,
       '#maxlength' => 20,
       '#required' => $element['#required'] && $address->type == 'zip',
       '#access' => isset($types['zip']),
     );
+  }
+ 
+  // How many elements do we have visible?
+  $visible = array();
+  foreach (element_children($element) as $key) {
+    if ($element[$key]['#type'] != 'value' && ($element[$key]['#access'] !== FALSE)) {
+      $visible[] = $key;
+    }
+  }
+
+  // No visible components.  Hide the element entirely.
+  if (!$visible) $element['#type'] = 'value';
+
+  // One visible component.  Set its title to the element's title.
+  elseif (count($visible) == 1) {
+    $element[current($visible)]['#title'] = $element['#title'];
+    $element[current($visible)]['#required'] = $element['#required'];
+    unset($element['#title']);
   }
 
   return $element;
@@ -246,7 +289,7 @@ function postal_form_postal_general_settings($settings = array()) {
 
   $form['selection_types'] = array(
     '#type' => 'checkboxes',
-    '#title' => t('Available selections'),
+    '#title' => t('Available components'),
     '#options' => $types,
     '#default_value' => $settings ? $settings['selection_types'] : array_keys($types),
     '#description' => t('Select the level of granularity available for selection.  "State" will show a state selector, "Postal code" will show a text box for postal code entry.  If more than one option is checked, visitors can choose which to use.'),
@@ -266,15 +309,32 @@ function postal_form_postal_general_settings($settings = array()) {
     '#description' => t('Hide the state/province selector and use the default value'),
   );
 
-  /*  TODO set this up.
-  // Respect any user-configured labels for these elements.
-  $type_label = isset($o['type_label']) ? $o['type_label'] : $element['#title'];
-  $country = isset($o['country_label']) ? $o['country_label'] : t('Country');
-  $state   = isset($o['state_label']) ? $o['state_label'] : t('State/Province');
-  $city    = isset($o['city_label']) ? $o['city_label'] : t('City');
-  $zip     = isset($o['zip_label']) ? $o['zip_label'] : t('Postal code');
-  */
-
+  $form['labels'] = array(
+    '#type' => 'fieldset',
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#title' => t('Labels'),
+  );
+  $form['labels']['country'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Country'),
+    '#default_value' => $settings ? $settings['labels']['country'] : t('Country'),
+  );
+  $form['labels']['state'] = array(
+    '#type' => 'textfield',
+    '#title' => t('State/province'),
+    '#default_value' => $settings ? $settings['labels']['state'] : t('State/province'),
+  );
+  $form['labels']['city'] = array(
+    '#type' => 'textfield',
+    '#title' => t('City'),
+    '#default_value' => $settings ? $settings['labels']['city'] : t('City'),
+  );
+  $form['labels']['zip'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Postal code'),
+    '#default_value' => $settings ? $settings['labels']['zip'] : t('Postal code'),
+  );
   return $form;
 }
 
@@ -284,12 +344,14 @@ function postal_form_postal_general_settings($settings = array()) {
 function postal_form_ahah() {
   // This hack ensures that node forms will work.  YMMV for other forms!
   if (substr($_POST['form_id'], -9) == 'node_form') {
-    module_load_include('inc', 'node', 'node.pages');
+    module_load_include('pages.inc', 'node', 'node');
+  }
+  elseif ($_POST['form_id'] == 'content_field_edit_form') {
+    module_load_include('admin.inc', 'content', 'includes/content');
   }
 
-  //$form_state = array('storage' => NULL, 'submitted' => FALSE);
-  $form_state = array('storage' => NULL, 'submitted' => FALSE, 'rebuild' => TRUE);
   $form_build_id = $_POST['form_build_id'];
+  $form_state = array('storage' => NULL, 'submitted' => FALSE, 'rebuild' => TRUE);
   // Step #4.
   $form = form_get_cache($form_build_id, $form_state);
 

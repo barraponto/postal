@@ -23,25 +23,58 @@ function postal_elements() {
   return array(
     'postal' => array(
       '#input' => TRUE,
-      '#process' => array('postal_process'),
+      '#tree' => TRUE,
+      '#value_callback' => 'postal_element_value',
+      '#process' => array('postal_element_process'),
       '#columns' => array_keys(postal_database_columns()),
     ),
     'postal_general' => array(
       '#input' => TRUE,
-      '#process' => array('postal_process'),
+      '#tree' => TRUE,
+      '#value_callback' => 'postal_element_value',
+      '#process' => array('postal_element_process'),
       '#columns' => array_keys(postal_database_columns()),
     ),
   );
 }
 
 /**
+ * An element #value_callback function for postal elements.
+ */
+function postal_element_value($element, $edit = FALSE) {
+  // Nothing has been posted: simply return the default value.
+  if (!$edit) return $element['#default_value'];
+
+  // Some fields may be hard-coded and not posted by the user: Account for them.
+  foreach (array('type', 'country', 'state') as $key) {
+    if (!isset($edit[$key])) $edit[$key] = $element['#default_value'][$key];
+  }
+
+  // If the element's country has changed, unset subordinate values.
+  if ($edit['country'] != $element['#defalt_value']['country']) {
+    unset($edit['state']);
+  }
+  return $edit;
+}
+
+/**
  * An element #process callback for postal elements.
  */
-function postal_process(&$element, $form_state) {
+function postal_element_process($element, $edit, &$form_state, $form) {
   module_load_include('form.inc', 'postal', 'includes/postal');
   if (function_exists($func = 'postal_form_process_'. $element['#type'])) {
-    return $func($element, $form_state);
+    return $func($element, $edit, $form_state, $form);
   }
+}
+
+/**
+ * Implementation of hook_views_api().
+ */
+function postal_views_api() {
+  return array(
+    'api' => 2,
+    'path' => drupal_get_path('module', 'postal') . '/includes/views',
+  );
 }
 
 /**
@@ -51,28 +84,100 @@ function postal_process(&$element, $form_state) {
 function postal_database_columns() {
   return array(
     'type'    => array(
-      'type' => 'varchar', 'length' => 100, 'sortable' => TRUE
+      'description' => t('The address type (e.g. city, state)'),
+      'type' => 'varchar',
+      'length' => 100,
+      'sortable' => TRUE,
      ),
+
     'name'    => array(
-      'type' => 'varchar', 'length' => 100, 'sortable' => TRUE
+      'description' => t('A user-defined address name'),
+      'type' => 'varchar',
+      'length' => 100,
+      'sortable' => TRUE,
      ),
+
     'street1' => array(
-      'type' => 'varchar', 'length' => 64, 'sortable' => FALSE
+      'description' => t('Street address'),
+      'type' => 'varchar',
+      'length' => 64,
+      'sortable' => FALSE,
+      'views' => array(
+        'filter' => array(
+          'handler' => 'views_handler_filter_string',
+        ),
+       ),
      ),
+
     'street2' => array(
-      'type' => 'varchar', 'length' => 64, 'sortable' => FALSE
+      'description' => t('Street address - additional'),
+      'type' => 'varchar',
+      'length' => 64,
+      'sortable' => FALSE
     ),
-    'zip'     => array(
-      'type' => 'varchar', 'length' => 10, 'sortable' => TRUE
-     ),
-    'city'    => array(
-      'type' => 'varchar', 'length' => 32, 'sortable' => TRUE
+
+    'zip' => array(
+      'description' => t('Postal code'),
+      'type' => 'varchar', 
+      'length' => 10, 
+      'sortable' => TRUE,
+      'views' => array(
+        'filter' => array(
+          'handler' => 'views_handler_filter_string',
+        ),
+        'argument' => array(
+          'handler' => 'views_handler_argument_string',
+        ),
+      ),
     ),
+
+    'city' => array(
+      'description' => t('City'),
+      'type' => 'varchar',
+      'length' => 32, 
+      'sortable' => TRUE,
+      'views' => array(
+        'filter' => array(
+          'handler' => 'views_handler_filter_string',
+        ),
+        'argument' => array(
+          'handler' => 'views_handler_argument_string',
+        ),
+      ),
+    ),
+
     'state'   => array(
-      'type' => 'varchar', 'length' => 32, 'sortable' => TRUE
-     ),
+      'description' => t('State/province'),
+      'type' => 'varchar', 
+      'length' => 32, 
+      'sortable' => TRUE,
+      'views' => array(
+        'filter' => array(
+          'handler' => 'postal_views_handler_filter_state',
+          'postal field' => 'state',
+        ),
+        'argument' => array(
+          'handler' => 'postal_views_handler_argument',
+          'postal field' => 'state',
+        ),
+      ),
+    ),
+
     'country' => array(
-      'type' => 'varchar', 'length' => 2, 'sortable' => TRUE
+      'description' => t('Country'),
+      'type' => 'varchar', 
+      'length' => 2, 
+      'sortable' => TRUE,
+      'views' => array(
+        'filter' => array(
+          'handler' => 'postal_views_handler_filter_country',
+          'postal field' => 'country',
+        ),
+        'argument' => array(
+          'handler' => 'postal_views_handler_argument',
+          'postal field' => 'country',
+        ),
+      ),
     ),
   );
 }
@@ -86,17 +191,36 @@ function postal_address($address = NULL, $id = NULL, $values = array()) {
 
   if (!$address) {
     $address = new stdClass();
-    $address->id = $id ? $id : 'default';
   }
   elseif (is_array($address) && isset($address['#item'])) {
     $address = $address['#item'];
   }
   $address = (object) $address;
   
-  $address->empty = TRUE;
+  // If an address granularity is defined, exclude non-pertinent fields.
+  $unset = array();
+  switch ($address->type) {
+    case 'country':
+      $unset = array('street1', 'street2', 'city', 'state', 'zip');
+      break;
+
+    case 'state':
+      $unset = array('street1', 'street2', 'city', 'zip');
+      break;
+
+    case 'city':
+      $unset = array('street1', 'street2', 'zip');
+      break;
+
+    case 'zip':
+      $unset = array('street1', 'street2');
+      break;
+  }
   
+  $address->empty = TRUE;
+
   foreach ($fields as $field) {
-    if (!array_key_exists($field, $address)) {
+    if (in_array($field, $unset) || !array_key_exists($field, $address)) {
       $address->$field = '';
     }
     elseif ($address->$field) $address->empty = FALSE;
