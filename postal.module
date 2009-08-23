@@ -382,3 +382,18 @@ function postal_set_names($address) {
   }
   return $address;
 }
+
+/**
+ * Implementation of hook_token_list().
+ */
+function postal_token_list($type = 'all') {
+
+}
+
+/**
+ * Implementation of hook_token_values().
+ */
+function postal_token_values($type, $object = NULL) {
+
+}
+

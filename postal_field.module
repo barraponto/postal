@@ -175,3 +175,34 @@ function postal_field_theme($existing, $type, $theme, $path) {
   }
   return $registry;
 }
+
+/**
+ * Implementation of hook_token_list().
+ */
+function postal_field_token_list($type = 'all') {
+  if ($type == 'field' || $type == 'all') {
+    $tokens = array();
+    $tokens['postal']['country'] = t('Country');
+    $tokens['postal']['state'] = t('State');
+    $tokens['postal']['city'] = t('City');
+    $tokens['postal']['zip'] = t('Postal code');
+    $tokens['postal']['type'] = t('Postal type');
+    $tokens['postal']['addresss'] = t('Address');
+    return $tokens;
+  }
+}
+
+/**
+ * Implementation of hook_token_values().
+ */
+function postal_field_token_values($type, $object = NULL) {
+  if($type == 'field') {
+    $item = $object[0];
+    $tokens['country'] = $item['country'];
+    $tokens['state'] = $item['state'];
+    $tokens['city'] = $item['city'];
+    $tokens['zip'] = $item['zip'];
+    $tokens['address'] = theme("postal_address", $item); 
+    return $tokens;
+  }
+}
