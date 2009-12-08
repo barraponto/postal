@@ -397,3 +397,9 @@ function postal_token_values($type, $object = NULL) {
 
 }
 
+/**
+ * Include Feeds element mapper implementation if feeds is enabled.
+ */
+if (module_exists('feeds')) {
+  module_load_include('inc', 'postal', 'includes/feeds/postal');  
+}
