@@ -49,7 +49,7 @@ function postal_feeds_set_target($node, $target, $value) {
   foreach ($value as $v) {
     $field_data[$i][$sub_field] = $v;
     // Set a default type granularity TODO: make this smarter. 
-    $field_data[$i]['type'] = 'zip';
+    $field_data[$i]['type'] = '';
     $i++;
   }
   $node->$field_name = $field_data;
