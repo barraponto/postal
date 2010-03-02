@@ -194,6 +194,7 @@ function postal_address($address = NULL, $id = NULL, $values = array()) {
   }
   elseif (is_array($address) && isset($address['#item'])) {
     $address = $address['#item'];
+    unset($address['#delta']);
   }
   $address = (object) $address;
   
@@ -223,7 +224,10 @@ function postal_address($address = NULL, $id = NULL, $values = array()) {
     if (in_array($field, $unset) || !array_key_exists($field, $address)) {
       $address->$field = '';
     }
-    elseif ($address->$field) $address->empty = FALSE;
+    elseif ($address->$field) {
+      $address->$field = check_plain($address->$field);
+      $address->empty = FALSE;
+    }
   }
 
   return $address;
