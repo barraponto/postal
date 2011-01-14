@@ -123,7 +123,7 @@ function postal_field_widget(&$form, &$form_state, $field, $items, $delta = 0) {
 
   // We know we're on the "default value" form because it's not fully-baked.
   // Unset any options that would stand in the way of setting useful defaults.
-  if (!$form['#id']) {
+  if (!isset($form['#id'])) {
     $settings = array();
   }
 
