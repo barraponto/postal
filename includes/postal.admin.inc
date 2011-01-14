@@ -93,7 +93,7 @@ function postal_admin_load_countries() {
   $ret = drupal_http_request('http://download.geonames.org/export/dump/countryInfo.txt');
 
   foreach (explode("\n", $ret->data) as $row) {
-    if ($row[0] == '#') continue;  // Skip comments.
+    if (isset($row[0]) && $row[0] == '#') continue;  // Skip comments.
 
     $c = explode("\t", $row);
     $item = array(
