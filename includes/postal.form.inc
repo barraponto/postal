@@ -135,8 +135,8 @@ function postal_form_process_postal_general($element, $edit, &$form_state, $form
   $address = postal_address($element['#value']);
 
   // Respect any user-configured labels for these elements.
-  $labels = $o['labels'];
-  $type_label = $labels['type'] ? $labels['type'] : $element['#title'];
+  $labels = isset($o['labels']) ? $o['labels'] : NULL;
+  $type_label = isset($labels['type']) ? $labels['type'] : $element['#title'];
   $country = $labels ? $labels['country'] : t('Country');
   $state   = $labels ? $labels['state'] : t('State/Province');
   $city    = $labels ? $labels['city'] : t('City');
@@ -158,8 +158,8 @@ function postal_form_process_postal_general($element, $edit, &$form_state, $form
   }
 
   // Don't allow users to select country/state-level inputs if they're hiding.
-  if ($o['force_country']) unset($types['country']);
-  if ($o['force_state']) unset($types['state']);
+  if (isset($o['force_country'])) unset($types['country']);
+  if (isset($o['force_state'])) unset($types['state']);
 
   // Set the default value if there's only one selected type.
   if (count($types) == 1) {
@@ -271,7 +271,7 @@ function postal_form_process_postal_general($element, $edit, &$form_state, $form
   // How many elements do we have visible?
   $visible = array();
   foreach (element_children($element) as $key) {
-    if ($element[$key]['#type'] != 'value' && ($element[$key]['#access'] !== FALSE)) {
+    if ($element[$key]['#type'] != 'value' && (!isset($element[$key]['#access']) || $element[$key]['#access'] != FALSE)) {
       $visible[] = $key;
     }
   }
