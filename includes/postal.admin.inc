@@ -81,6 +81,11 @@ function postal_admin_import_states($country) {
   drupal_goto();
 }
 
+
+function _postal_admin_load_countries_cleanup($row) {
+ return (!isset($row[0]) || $row[0] == '#') ? FALSE : TRUE;
+}
+
 /**
  * Helper function to import the entire country list.
  * This is a quick and dirty function call to the country information provided 
@@ -91,26 +96,30 @@ function postal_admin_load_countries() {
   $existing = postal_country_load();
 
   $ret = drupal_http_request('http://download.geonames.org/export/dump/countryInfo.txt');
+  $keys = array('ISO', 'ISO3', 'ISO-Numeric', 'fips', 'Country', 'Capital', 'Area(insqkm)', 'Population', 'Continent', 'tld', 'CurrencyCode', 'CurrencyName', 'Phone', 'PostalCodeFormat', 'PostalCodeRegex', 'Languages', 'geonameid', 'neighbours', 'EquivalentFipsCode');
 
-  foreach (explode("\n", $ret->data) as $row) {
-    if (isset($row[0]) && $row[0] == '#') continue;  // Skip comments.
+  $rows = explode("\n", $ret->data);
+  $rows = array_filter($rows, '_postal_admin_load_countries_cleanup');
 
-    $c = explode("\t", $row);
+  foreach ($rows as $key => $value) {
+    $rows[$key] = array_combine($keys, explode("\t", $value));
+
+    if ($rows[$key]['ISO'] && $rows[$key]['geonameid'] != 0) {
+      
     $item = array(
-      'id' => $c[16],
+      'id' => $rows[$key]['geonameid'],
       'parent_id' => NULL,
       'type' => 'country',
-      'code' => $c[0],
-      'name' => $c[4],
-      'iso' => $c[0],
-      'iso3' => $c[1],
-      'ison' => $c[2],
-      'fips' => $c[3],
-      'zip_format' => $c[13],
-      'zip_regex' => $c[14],
+      'code' => $rows[$key]['ISO'],
+      'name' => $rows[$key]['Country'],
+      'iso' => $rows[$key]['ISO'],
+      'iso3' => $rows[$key]['ISO3'],
+      'ison' => $rows[$key]['ISO-Numeric'],
+      'fips' => $rows[$key]['fips'],
+      'zip_format' => $rows[$key]['PostalCodeFormat'],
+      'zip_regex' => $rows[$key]['PostalCodeRegex'],
     );
 
-    if ($item['code']) {
       $update = ($existing && isset($existing[$item['code']])) ? 'id' : NULL;
       drupal_write_record('postal', $item, $update);
     }
