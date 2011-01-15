@@ -49,6 +49,23 @@ function postal_form_process_postal($element, $edit, &$form_state, $form) {
     '#required' => $element['#required'],
   );
 
+  if ($address->country && $o['force_country']) {
+    $element['country'] = array(
+      '#type' => 'value', '#value' => $address->country
+    );
+  }
+  else {
+    $countries = postal_country_names();
+    $element['country'] = array(
+      '#type' => 'select',
+      '#multiple' => FALSE,
+      '#options' => $countries,
+      '#title' => t('Country'),
+      '#default_value' => $address->country,
+      '#required' => $element['#required'],
+    );
+  }
+
   // We don't know if country has states.
   if (is_null($country->children)) {
     $element['locale']['state'] = array(
