@@ -1,5 +1,4 @@
 <?php
-// $Id$
 
 /**
  * @file postal-address.tpl.php
